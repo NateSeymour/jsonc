@@ -1,0 +1,15 @@
+{
+	"This is a test": "Wooo!",
+	"Super{{}} test": "ha\"haha",
+
+	"Object": {
+		"Test": 2,
+		"Woopdie-doo": 69,
+
+		"Slim Shady": {
+			"coolness": 100,
+			"hipness": 100,
+			"rap ::godliness": 400000
+		}
+	}
+}
