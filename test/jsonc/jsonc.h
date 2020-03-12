@@ -6,7 +6,8 @@ typedef enum {
 	string_t,
 	int_t,
 	_float_t,
-	array_t
+	array_t,
+	obj_t
 } json_value_types;
 
 typedef union {
@@ -24,6 +25,7 @@ typedef struct {
 } json_def_t;
 
 typedef struct {
+	int start_index;
 	int children_count;
 	void* children;
 } json_obj_t;
@@ -40,6 +42,8 @@ typedef struct {
 
 	void* json_pool;
 
+	void* string_ptr;
+
 	json_obj_t* obj_pool;
 	json_def_t* def_pool;
 	void* string_pool;
@@ -51,9 +55,14 @@ typedef struct {
 	int precursor_escaped;
 	char precursor;
 
+	int postcursor_escaped;
+	char postcursor;
+
 	char character;
 	int length;
 	int position;
+
+	int push_direction;
 
 	int end;
 	int escaped;
@@ -66,6 +75,8 @@ int clamp(int x, int lower, int upper);
 // Cursor
 void _cursor_push(json_cursor_t* json_cursor, int step);
 void _cursor_move(json_cursor_t* json_cursor, int position);
+void _cursor_init(json_cursor_t* json_cursor, const char* json_string);
+void _cursor_update(json_cursor_t* json_cursor);
 
 // Preparser
 int _json_preparse_str_count(json_cursor_t* json_cursor);
@@ -75,8 +86,14 @@ preparse_data_t _json_preparse(const char* json_string);
 
 // Lexer
 int _json_seek_to(json_cursor_t* json_cursor, char seek, int step);
+int _json_seek_to_inclstr(json_cursor_t* json_cursor, char seek, int step);
+
+// Parser
+void _json_do_parse(json_document_t* document, preparse_data_t ppd, const char* json_string);
 
 // Make pub
 extern json_document_t json_parse_file(const char* file_name);
+extern json_document_t json_parse(const char* json_string);
+extern void release_json(json_document_t* document);
 
 #endif

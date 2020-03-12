@@ -1,8 +1,12 @@
 #include "jsonc/jsonc.h"
 
+#include <stdio.h>
+
 int main()
 {
-	json_parse_file("build/test-small-1.json");
+	json_document_t document = json_parse_file("build/test-small-1.json");
+
+	release_json(&document);
 
 	return 0;
 }

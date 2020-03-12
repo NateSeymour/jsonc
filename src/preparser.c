@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 
 #include "include/jsonc.h"
 
@@ -9,12 +10,12 @@ int _json_preparse_str_count(json_cursor_t* json_cursor)
 	_cursor_move(json_cursor, 0);
 
 	do {
-		_json_seek_to(json_cursor, '"', 1);
+		_json_seek_to_inclstr(json_cursor, '"', 1);
 
 		// The string count includes the closing quote,
 		// But that is fine because it will be used to
 		// store the null terminator of the strings ;P
-		str_count += _json_seek_to(json_cursor, '"', 1);
+		str_count += _json_seek_to_inclstr(json_cursor, '"', 1);
 	} while(!json_cursor->end);
 
 	return str_count;
@@ -23,13 +24,12 @@ int _json_preparse_str_count(json_cursor_t* json_cursor)
 int _json_preparse_obj_count(json_cursor_t* json_cursor)
 {
 	int obj_count = 1;
-
 	_cursor_move(json_cursor, 0);
 
 	do {
-		int obj_start_pos = _json_seek_to(json_cursor, '{', 1);
+		int mvmt = _json_seek_to(json_cursor, '{', 1);
 
-		if(obj_start_pos)
+		if(mvmt > 0)
 		{
 			obj_count++;
 		}
@@ -59,11 +59,8 @@ int _json_preparse_def_count(json_cursor_t* json_cursor)
 preparse_data_t _json_preparse(const char* json_string)
 {
 	// Create preparsing cursor
-	json_cursor_t json_cursor = { 
-		.json_string = json_string, 
-		.length = strlen(json_string),
-		.position = 0 
-	};
+	json_cursor_t json_cursor;
+	_cursor_init(&json_cursor, json_string);
 
 	// Create preparsing data structure
 	preparse_data_t ppd = { 0, 0, 0 };

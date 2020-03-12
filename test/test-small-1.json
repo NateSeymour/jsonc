@@ -1,15 +1,19 @@
 {
-	"This is a test": "Wooo!",
-	"Super{{}} test": "ha\"haha",
+	"name": "@simonwep/pickr",
+	"version": "1.5.1",
+	"license": "MIT",
+	"author": "Simon Reinisch <trash@reinisch.io>",
+	"description": "Flat, Simple, Hackable Color-Picker.",
+	"keywords": "Can't handle arrays yet, oops :P",
+	"main": "./dist/pickr.min.js",
+	"typings": "./types/pickr.d.ts",
+	"scripts": "Can't handle objects yet either lol",
 
-	"Object": {
-		"Test": 2,
-		"Woopdie-doo": 69,
+	"object": {
+		"test": "testing",
+		"penis": 2
+	},
 
-		"Slim Shady": {
-			"coolness": 100,
-			"hipness": 100,
-			"rap ::godliness": 400000
-		}
-	}
+	"int": 342,
+	"float": 1231234.123
 }

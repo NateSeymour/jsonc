@@ -6,23 +6,9 @@
 
 #include "include/jsonc.h"
 
-// Lexer
-int _json_seek_to(json_cursor_t* json_cursor, char seek, int step)
+void release_json(json_document_t* document)
 {
-	int steps_taken = 0;
-	do {
-		_cursor_push(json_cursor, step);
-		steps_taken++;
-
-		if(json_cursor->character == seek 
-			&& !json_cursor->escaped 
-			&& !json_cursor->in_string) 
-		{
-			return steps_taken;
-		}
-	} while(!json_cursor->end);
-
-	return 0;
+	free(document->json_pool);
 }
 
 json_document_t json_parse(const char* json_string)
@@ -38,21 +24,18 @@ json_document_t json_parse(const char* json_string)
 
 	int pool_size = res_obj + res_def + ppd.string_length;
 
-	printf("Number of Objects: %i, Number of Definitions: %i, String length, %i\n", ppd.obj_count, ppd.def_count, ppd.string_length);
+	printf("Number of Objects: %i, Number of Definitions: %i, String length: %i\n", ppd.obj_count, ppd.def_count, ppd.string_length);
 	printf("Allocation size: %i\n", pool_size);
 
 	document.json_pool = malloc(pool_size);
 	document.ppd = ppd;
 
 	document.obj_pool = document.json_pool;
-	document.def_pool = (char*)document.obj_pool + res_obj;
+	document.def_pool = (json_def_t *)((char*)document.obj_pool + res_obj);
 	document.string_pool = (char*)document.def_pool + res_def;
+	document.string_ptr = document.string_pool;
 
-	// PARSE
-	/*
-	1. create objects
-	2. populate their definitions
-	*/
+	_json_do_parse(&document, ppd, json_string);
 
 	return document;
 }
@@ -66,6 +49,8 @@ json_document_t json_parse_file(const char* file_name)
 	stat(file_name, &input_stat);
 
 	long file_size = input_stat.st_size;
+
+	printf("File size: %ld\n", file_size);
 
 	// Allocate enough ram
 	const char* buffer = (char*) malloc((size_t)file_size);
@@ -81,14 +66,13 @@ json_document_t json_parse_file(const char* file_name)
 
 	// Cleanup
 	free((void*)buffer);
-	free(document.json_pool);
 
 	return document;
 }
 
 __attribute__((constructor)) static void initializer(void) 
 {
-	printf("Json C Parser initialized...\n");
+	printf("\n\nJson C Parser initialized...\n\n");
 }
 
 
