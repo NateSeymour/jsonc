@@ -1,7 +1,8 @@
 {
 	"name": "test-small-1",
 	"array me baby one more time": [1, 2, "test"],
-	
+	"bool": true,
+
 	"tests": {
 		"int": 312,
 		"float": 132.21,

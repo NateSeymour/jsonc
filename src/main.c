@@ -55,8 +55,6 @@ void _json_allocate_memory(json_document_t* document, preparse_data_t* ppd)
 
 json_document_t json_parse(const char* json_string)
 {
-	DEBUG_PRINT("%s\n", json_string);
-
 	json_document_t document;
 
 	// Preparse

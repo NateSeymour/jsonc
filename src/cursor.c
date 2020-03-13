@@ -34,14 +34,6 @@ void _cursor_update(json_cursor_t* json_cursor)
 		json_cursor->precursor_escaped = 0;
 	}
 
-	if(json_cursor->character == '\\')
-	{
-		json_cursor->postcursor_escaped = 1;
-	}
-	else {
-		json_cursor->postcursor_escaped = 0;
-	}
-
 	if(json_cursor->precursor != '\\')
 	{
 		json_cursor->escaped = 0;

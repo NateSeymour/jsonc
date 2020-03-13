@@ -3,7 +3,7 @@
 
 int main()
 {
-	json_document_t document = json_parse_file("build/test-small-3.json");
+	json_document_t document = json_parse_file("build/test-small-1.json");
 
 	release_json(&document);
 

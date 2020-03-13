@@ -119,6 +119,18 @@ parse_value_data_t _parse_getvalue(json_document_t* document, json_cursor_t* jso
 			_skip_object(json_cursor);
 			break;
 		}
+		else if(json_cursor->postcursor == 't')
+		{
+			value.value.bool_val = 1;
+			value.type = bool_t;
+			break;
+		}
+		else if(json_cursor->postcursor == 'f')
+		{
+			value.value.bool_val = 0;
+			value.type = bool_t;
+			break;
+		}
 		else if(json_cursor->postcursor == '}' 
 			|| json_cursor->postcursor == ']')
 		{
@@ -152,6 +164,12 @@ void _json_print_def(json_def_t* def)
 		case string_t:
 		{
 			DEBUG_PRINT("Key: \"%s\"\t string value: \"%s\"\n", def->key, def->value.str_val);
+			break;
+		}
+
+		case bool_t:
+		{
+			DEBUG_PRINT("Key: \"%s\"\t bool value: %i\n", def->key, def->value.str_val);
 			break;
 		}
 
@@ -241,7 +259,7 @@ void _json_parse_object(json_document_t* document, json_cursor_t* json_cursor, p
 	current_obj->children_count = 0;
 	current_obj->children = &document->def_pool[pd->def_count];
 
-	_cursor_move(json_cursor, current_obj->start_index);
+	_cursor_move_unsafe(json_cursor, current_obj->start_index);
 
 	// Get first character
 	if(json_cursor->character != '{' && json_cursor->character != '[')

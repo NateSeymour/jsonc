@@ -14,12 +14,14 @@ typedef enum {
 	_float_t,
 	array_t,
 	obj_t,
-	none_t
+	none_t,
+	bool_t
 } json_value_types;
 
 typedef union {
 	char* str_val;
 	int int_val;
+	int bool_val;
 	float float_val;
 	void* array_val;
 	void* obj_val;
