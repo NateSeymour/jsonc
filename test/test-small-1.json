@@ -1,19 +1,20 @@
 {
-	"name": "@simonwep/pickr",
-	"version": "1.5.1",
-	"license": "MIT",
-	"author": "Simon Reinisch <trash@reinisch.io>",
-	"description": "Flat, Simple, Hackable Color-Picker.",
-	"keywords": "Can't handle arrays yet, oops :P",
-	"main": "./dist/pickr.min.js",
-	"typings": "./types/pickr.d.ts",
-	"scripts": "Can't handle objects yet either lol",
+	"name": "test-small-1",
+	"array me baby one more time": [1, 2, "test"],
+	
+	"tests": {
+		"int": 312,
+		"float": 132.21,
+		"string": "This is a string",
 
-	"object": {
-		"test": "testing",
-		"penis": 2
+		"nested_obj": {
+			"int": 532,
+			"float": 42.42,
+			"string": "This is a string"
+		}
 	},
 
-	"int": 342,
-	"float": 1231234.123
+	"more_tests": {
+		"lol": "string"
+	}
 }

@@ -67,7 +67,6 @@ void _cursor_init(json_cursor_t* json_cursor, const char* json_string)
 	json_cursor->position = 0;
 	json_cursor->json_string = json_string;
 	json_cursor->length = strlen(json_string);
-	json_cursor->push_direction = 1;
 	json_cursor->in_string = 0;
 
 	_cursor_update(json_cursor);
@@ -77,7 +76,6 @@ void _cursor_init(json_cursor_t* json_cursor, const char* json_string)
 void _cursor_push(json_cursor_t* json_cursor, int step)
 {
 	json_cursor->position = clamp(json_cursor->position + step, 0, json_cursor->length);
-	json_cursor->push_direction = step/abs(step);
 
 	_cursor_update(json_cursor);
 }
@@ -91,4 +89,12 @@ void _cursor_move(json_cursor_t* json_cursor, int position)
 	{
 		_cursor_push(json_cursor, movement/steps);
 	}
+}
+
+void _cursor_move_unsafe(json_cursor_t* json_cursor, int position) 
+{
+	json_cursor->position = position;
+	json_cursor->in_string = 0;
+
+	_cursor_update(json_cursor);
 }

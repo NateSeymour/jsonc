@@ -6,8 +6,10 @@
 
 typedef struct {
 	int obj_count;
+	int def_count;
 	int current_obj_index;
 	int strings;
+	int array_val_count;
 } parse_data_t;
 
 typedef struct {
@@ -87,6 +89,8 @@ void _skip_object(json_cursor_t* json_cursor)
 		if(json_cursor->character == '{') obj_count++;
 		if(json_cursor->character == '}') closing_count++;
 	}
+
+	_cursor_push(json_cursor, 1);
 }
 
 parse_value_data_t _parse_getvalue(json_document_t* document, json_cursor_t* json_cursor, parse_data_t* pd)
@@ -110,15 +114,116 @@ parse_value_data_t _parse_getvalue(json_document_t* document, json_cursor_t* jso
 		{
 			pd->obj_count++;
 			value.value.obj_val = &document->obj_pool[pd->obj_count - 1];
+			((json_obj_t*)value.value.obj_val)->start_index = json_cursor->position + 1;
 			value.type = obj_t;
 			_skip_object(json_cursor);
 			break;
-		}
+		}/*
+		else if(json_cursor->postcursor == '[')
+		{
+			value.value.array_val = _parse_getarray(document, json_cursor, pd);
+			value.type = array_t;
+			break;
+		}*/
 
 		_cursor_push(json_cursor, 1);
 	}
 
 	return value;
+}
+
+#ifdef DEBUG
+void _json_print_def(json_def_t* def)
+{
+	switch(def->type)
+	{
+		case _float_t: 
+		{
+			DEBUG_PRINT("Key: \"%s\"\t float value: %f\n", def->key, def->value.float_val);
+			break;
+		}
+
+		case int_t:
+		{
+			DEBUG_PRINT("Key: \"%s\"\t int value: %i\n", def->key, def->value.int_val);
+			break;
+		}
+
+		case string_t:
+		{
+			DEBUG_PRINT("Key: \"%s\"\t string value: \"%s\"\n", def->key, def->value.str_val);
+			break;
+		}
+
+		default: 
+		{
+			DEBUG_PRINT("Key: \"%s\"\t Can't display this data type\n", def->key);
+			break;
+		}
+	}
+}
+#endif
+
+// Return 1 when done with object
+int _json_parse_definition(json_document_t* document, json_cursor_t* json_cursor, parse_data_t* pd, json_obj_t* obj)
+{
+	// Get named definiton
+	char* definition_key = _parse_getstring(document, json_cursor);
+
+	if(definition_key)
+	{
+		_json_seek_to(json_cursor, ':', 1);
+
+		parse_value_data_t parse_value = _parse_getvalue(document, json_cursor, pd);
+
+		json_def_t test = {
+			.key = definition_key,
+			.value = parse_value.value,
+			.type = parse_value.type
+		};
+
+		pd->def_count++;
+
+		obj->children[obj->children_count] = test;
+		json_def_t* my_def = &obj->children[obj->children_count];
+
+		obj->children_count++;
+
+	#ifdef DEBUG
+		_json_print_def(my_def);
+	#endif
+	}
+
+	// set up for the next definition
+	while(!json_cursor->end)
+	{
+		if(json_cursor->character == ',') return 0;
+		if(json_cursor->character == '}') return 1;
+		
+		_cursor_push(json_cursor, 1);
+	}
+}
+
+void _json_parse_object(json_document_t* document, json_cursor_t* json_cursor, parse_data_t* pd, int obj_index)
+{
+	DEBUG_PRINT("\nObject number %i\n", obj_index);
+	json_obj_t* current_obj = &document->obj_pool[obj_index];
+
+	current_obj->children_count = 0;
+	current_obj->children = &document->def_pool[pd->def_count];
+
+	_cursor_move(json_cursor, current_obj->start_index);
+
+	// Get first character
+	if(json_cursor->character != '{')
+	{
+		_json_seek_to(json_cursor, '{', 1);
+	}
+
+	while(1)
+	{
+		if(_json_parse_definition(document, json_cursor, pd, current_obj) == 1) break;
+	}
 }
 
 void _json_do_parse(json_document_t* document, preparse_data_t ppd, const char* json_string)
@@ -130,76 +235,22 @@ void _json_do_parse(json_document_t* document, preparse_data_t ppd, const char* 
 	// Create parse data obj
 	parse_data_t pd = {
 		.obj_count = 1,
+		.def_count = 0,
 		.current_obj_index = 0, 
-		.strings = 0
+		.strings = 0,
+		.array_val_count = 0
 	};
 
-	// Get first character
-	if(json_cursor.character != '{')
-	{
-		_json_seek_to(&json_cursor, '{', 1);
-	}
+	// Prep root object
+	document->obj_pool[0].start_index = 0;
 
-	// Create first object
-	json_obj_t root_obj = {
-		.children_count = 0,
-		.children = document->def_pool
-	};
-
-	printf("\n\nParsing results: \n");
+	DEBUG_PRINT("\nParsing results: \n");
 
 	// Parse Loop
-	do
+	for(int i = 0; i < ppd.obj_count; i++)
 	{
-		// Get named definiton
-		char* definition_key = _parse_getstring(document, &json_cursor);
-
-		if(definition_key)
-		{
-			_json_seek_to(&json_cursor, ':', 1);
-
-			parse_value_data_t parse_value = _parse_getvalue(document, &json_cursor, &pd);
-
-			json_def_t test = {
-				.key = definition_key,
-				.value = parse_value.value,
-				.type = parse_value.type
-			};
-
-			*(json_def_t*)((char*)root_obj.children + (root_obj.children_count * sizeof(json_def_t))) = test;
-
-			root_obj.children_count++;
-
-			json_def_t* my_def = (json_def_t*)((char*)root_obj.children + ((root_obj.children_count - 1) * sizeof(json_def_t)));
-
-			switch(parse_value.type)
-			{
-				case _float_t: 
-				{
-					printf("Key: \"%s\"\t float value: %f\n", my_def->key, my_def->value.float_val);
-					break;
-				}
-
-				case int_t:
-				{
-					printf("Key: \"%s\"\t int value: %i\n", my_def->key, my_def->value.int_val);
-					break;
-				}
-
-				case string_t:
-				{
-					printf("Key: \"%s\"\t string value: \"%s\"\n", my_def->key, my_def->value.str_val);
-					break;
-				}
-
-				default: 
-				{
-					printf("Key: \"%s\"\t Can't display this data type\n", my_def->key);
-					break;
-				}
-			}
-		} 
-	} while(!json_cursor.end);
+		_json_parse_object(document, &json_cursor, &pd, i);
+	}
 }
 
 

@@ -1,6 +1,12 @@
 #ifndef _JSON_C_H_
 #define _JSON_C_H_
 
+#ifdef DEBUG
+#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#else
+#define DEBUG_PRINT(...) do {} while(0)
+#endif
+
 // Types
 typedef enum {
 	string_t,
@@ -27,26 +33,29 @@ typedef struct {
 typedef struct {
 	int start_index;
 	int children_count;
-	void* children;
+	json_def_t* children;
 } json_obj_t;
 
 typedef struct {
 	int obj_count;
 	int def_count;
 	int string_length;
+	int array_value_count;
 } preparse_data_t;
 
 typedef struct {
-	json_obj_t root_obj;
+	json_obj_t* root_obj;
 	preparse_data_t ppd;
 
-	void* json_pool;
+	int hash_map_size;
 
 	void* string_ptr;
 
 	json_obj_t* obj_pool;
 	json_def_t* def_pool;
-	void* string_pool;
+	json_value_t* array_pool;
+	int* def_index_hash_table;
+	char* string_pool;
 } json_document_t;
 
 typedef struct {
@@ -62,8 +71,6 @@ typedef struct {
 	int length;
 	int position;
 
-	int push_direction;
-
 	int end;
 	int escaped;
 	int in_string;
@@ -71,17 +78,16 @@ typedef struct {
 
 // Math
 int clamp(int x, int lower, int upper);
+int nearest_power(int x, int pow);
 
 // Cursor
 void _cursor_push(json_cursor_t* json_cursor, int step);
 void _cursor_move(json_cursor_t* json_cursor, int position);
+void _cursor_move_unsafe(json_cursor_t* json_cursor, int position);
 void _cursor_init(json_cursor_t* json_cursor, const char* json_string);
 void _cursor_update(json_cursor_t* json_cursor);
 
 // Preparser
-int _json_preparse_str_count(json_cursor_t* json_cursor);
-int _json_preparse_obj_count(json_cursor_t* json_cursor);
-int _json_preparse_def_count(json_cursor_t* json_cursor);
 preparse_data_t _json_preparse(const char* json_string);
 
 // Lexer

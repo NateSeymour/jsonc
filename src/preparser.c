@@ -3,59 +3,6 @@
 
 #include "include/jsonc.h"
 
-int _json_preparse_str_count(json_cursor_t* json_cursor)
-{
-	int str_count = 0;
-
-	_cursor_move(json_cursor, 0);
-
-	do {
-		_json_seek_to_inclstr(json_cursor, '"', 1);
-
-		// The string count includes the closing quote,
-		// But that is fine because it will be used to
-		// store the null terminator of the strings ;P
-		str_count += _json_seek_to_inclstr(json_cursor, '"', 1);
-	} while(!json_cursor->end);
-
-	return str_count;
-}
-
-int _json_preparse_obj_count(json_cursor_t* json_cursor)
-{
-	int obj_count = 1;
-	_cursor_move(json_cursor, 0);
-
-	do {
-		int mvmt = _json_seek_to(json_cursor, '{', 1);
-
-		if(mvmt > 0)
-		{
-			obj_count++;
-		}
-	} while(!json_cursor->end);
-
-	return obj_count;
-}
-
-int _json_preparse_def_count(json_cursor_t* json_cursor)
-{
-	int def_count = 0;
-
-	_cursor_move(json_cursor, 0);
-
-	do {
-		int obj_start_pos = _json_seek_to(json_cursor, ':', 1);
-
-		if(obj_start_pos)
-		{
-			def_count++;
-		}
-	} while(!json_cursor->end);
-
-	return def_count;
-}
-
 preparse_data_t _json_preparse(const char* json_string)
 {
 	// Create preparsing cursor
@@ -63,15 +10,43 @@ preparse_data_t _json_preparse(const char* json_string)
 	_cursor_init(&json_cursor, json_string);
 
 	// Create preparsing data structure
-	preparse_data_t ppd = { 0, 0, 0 };
+	preparse_data_t ppd = { 
+		.obj_count = 0, 
+		.def_count = 0, 
+		.string_length = 0,
+		.array_value_count = 0
+	};
 
-	// Head to the first object
-	_json_seek_to(&json_cursor, '{', 1);
+	do
+	{
+		if(!json_cursor.escaped)
+		{
+			if(!json_cursor.in_string)
+			{
+				if(json_cursor.character == '{') ppd.obj_count++;
+				if(json_cursor.character == ':') ppd.def_count++;
 
-	// Preprocess this stuff
-	ppd.string_length = _json_preparse_str_count(&json_cursor);
-	ppd.obj_count = _json_preparse_obj_count(&json_cursor);
-	ppd.def_count = _json_preparse_def_count(&json_cursor);
+				if(json_cursor.character == '[')
+				{
+					if(json_cursor.postcursor != ']') 
+					{
+						ppd.array_value_count++;
+						while(json_cursor.character != ']')
+						{
+							if(json_cursor.character == ',') ppd.array_value_count++;
+							if(json_cursor.character == '"') ppd.string_length += _json_seek_to_inclstr(&json_cursor, '"', 1);
+							_cursor_push(&json_cursor, 1);
+						}
+					}
+				}
+			} else if(json_cursor.character == '"')
+			{
+				ppd.string_length += _json_seek_to_inclstr(&json_cursor, '"', 1);
+			}
+		}
+
+		_cursor_push(&json_cursor, 1);
+	} while(!json_cursor.end);
 
 	return ppd;
 }

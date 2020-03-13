@@ -1,5 +1,4 @@
 #include "jsonc/jsonc.h"
-
 #include <stdio.h>
 
 int main()
