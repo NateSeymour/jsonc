@@ -77,17 +77,17 @@ void _skip_object(json_cursor_t* json_cursor)
 	int obj_count = 1;
 	int closing_count = 0;
 
-	if(json_cursor->character != '{')
+	if(json_cursor->character != '{' && json_cursor->character != '[')
 	{
-		_json_seek_to(json_cursor, '{', 1);
+		_json_seek_to_obj(json_cursor);
 	}
 
 	while(obj_count != closing_count)
 	{
 		_cursor_push(json_cursor, 1);
 
-		if(json_cursor->character == '{') obj_count++;
-		if(json_cursor->character == '}') closing_count++;
+		if(json_cursor->character == '{' || json_cursor->character == '[') obj_count++;
+		if(json_cursor->character == '}' || json_cursor->character == ']') closing_count++;
 	}
 
 	_cursor_push(json_cursor, 1);
@@ -110,7 +110,7 @@ parse_value_data_t _parse_getvalue(json_document_t* document, json_cursor_t* jso
 			value = _parse_getnumber(json_cursor);
 			break;
 		}
-		else if(json_cursor->postcursor == '{')
+		else if(json_cursor->postcursor == '{' || json_cursor->postcursor == '[')
 		{
 			pd->obj_count++;
 			value.value.obj_val = &document->obj_pool[pd->obj_count - 1];
@@ -118,13 +118,13 @@ parse_value_data_t _parse_getvalue(json_document_t* document, json_cursor_t* jso
 			value.type = obj_t;
 			_skip_object(json_cursor);
 			break;
-		}/*
-		else if(json_cursor->postcursor == '[')
+		}
+		else if(json_cursor->postcursor == '}' 
+			|| json_cursor->postcursor == ']')
 		{
-			value.value.array_val = _parse_getarray(document, json_cursor, pd);
-			value.type = array_t;
+			value.type = none_t;
 			break;
-		}*/
+		}
 
 		_cursor_push(json_cursor, 1);
 	}
@@ -204,6 +204,35 @@ int _json_parse_definition(json_document_t* document, json_cursor_t* json_cursor
 	}
 }
 
+int _json_parse_array_definition(json_document_t* document, json_cursor_t* json_cursor, parse_data_t* pd, json_obj_t* obj)
+{
+	parse_value_data_t parse_value = _parse_getvalue(document, json_cursor, pd);
+
+	if(parse_value.type != none_t)
+	{
+		json_def_t test = {
+			.key = 0,
+			.value = parse_value.value,
+			.type = parse_value.type
+		};
+
+		pd->def_count++;
+
+		obj->children[obj->children_count] = test;
+		json_def_t* my_def = &obj->children[obj->children_count];
+
+		obj->children_count++;
+
+	#ifdef DEBUG
+		_json_print_def(my_def);
+	#endif
+
+		return 0;
+	}
+
+	return 1;
+}
+
 void _json_parse_object(json_document_t* document, json_cursor_t* json_cursor, parse_data_t* pd, int obj_index)
 {
 	DEBUG_PRINT("\nObject number %i\n", obj_index);
@@ -215,15 +244,26 @@ void _json_parse_object(json_document_t* document, json_cursor_t* json_cursor, p
 	_cursor_move(json_cursor, current_obj->start_index);
 
 	// Get first character
-	if(json_cursor->character != '{')
+	if(json_cursor->character != '{' && json_cursor->character != '[')
 	{
-		_json_seek_to(json_cursor, '{', 1);
+		_json_seek_to_obj(json_cursor);
 	}
 
-	while(1)
+	if(json_cursor->character == '{')
 	{
-		if(_json_parse_definition(document, json_cursor, pd, current_obj) == 1) break;
+		while(1)
+		{
+			if(_json_parse_definition(document, json_cursor, pd, current_obj) == 1) break;
+		}
 	}
+	else if(json_cursor->character == '[')
+	{
+		while(1)
+		{
+			if(_json_parse_array_definition(document, json_cursor, pd, current_obj) == 1) break;
+		}
+	}
+	
 }
 
 void _json_do_parse(json_document_t* document, preparse_data_t ppd, const char* json_string)

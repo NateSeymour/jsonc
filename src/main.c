@@ -12,12 +12,7 @@
 
 void release_json(json_document_t* document)
 {
-	free(document->obj_pool);
-	free(document->def_pool);
-	free(document->string_pool);
-	free(document->array_pool);
-	free(document->def_index_hash_table);
-
+	free(document->json_pool);
 }
 
 json_def_t json(json_obj_t* obj, const char* path)
@@ -35,25 +30,23 @@ void _json_allocate_memory(json_document_t* document, preparse_data_t* ppd)
 
 	DEBUG_PRINT("Hashmap size: %i\n", document->hash_map_size);
 
-	// Only run if in debug mode
-#ifdef DEBUG
+	// Get allocation size
 	int res_obj = ppd->obj_count * sizeof(json_obj_t);
 	int res_def = ppd->def_count * sizeof(json_def_t);
 	int res_hash_table = document->hash_map_size * sizeof(int);
-	int res_arr = ppd->array_value_count * sizeof(json_value_t);
 
-	int pool_size = res_obj + res_def + res_hash_table + res_arr + ppd->string_length;
+	int pool_size = res_obj + res_def + res_hash_table + ppd->string_length;
 
 	DEBUG_PRINT("Number of Objects: %i, Number of Definitions: %i, String length: %i, Array values: %i\n", ppd->obj_count, ppd->def_count, ppd->string_length, ppd->array_value_count);
 	DEBUG_PRINT("Allocation size: %i Bytes\n", pool_size);
-#endif
 
 	// Allocate memory
-	document->obj_pool = calloc(ppd->obj_count, sizeof(json_obj_t));
-	document->def_pool = calloc(ppd->def_count, sizeof(json_def_t));
-	document->string_pool = malloc(ppd->string_length);
-	document->array_pool = calloc(ppd->array_value_count, sizeof(json_value_t));
-	document->def_index_hash_table = calloc(document->hash_map_size, sizeof(int));
+	document->json_pool = malloc(pool_size);
+
+	document->obj_pool = document->json_pool;
+	document->def_pool = (char*)document->obj_pool + res_obj;
+	document->string_pool = (char*)document->def_pool + res_def;
+	document->def_index_hash_table = (char*)document->string_pool + ppd->string_length;
 
 	// Set root object and the base string pointer
 	document->string_ptr = document->string_pool;

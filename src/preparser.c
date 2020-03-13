@@ -23,17 +23,23 @@ preparse_data_t _json_preparse(const char* json_string)
 		{
 			if(!json_cursor.in_string)
 			{
-				if(json_cursor.character == '{') ppd.obj_count++;
-				if(json_cursor.character == ':') ppd.def_count++;
-
-				if(json_cursor.character == '[')
+				if(json_cursor.character == '{') 
 				{
+					ppd.obj_count++;
+				}
+				else if(json_cursor.character == ':') 
+				{
+					ppd.def_count++;
+				} 
+				else if(json_cursor.character == '[')
+				{
+					ppd.obj_count++;
 					if(json_cursor.postcursor != ']') 
 					{
-						ppd.array_value_count++;
+						ppd.def_count++;
 						while(json_cursor.character != ']')
 						{
-							if(json_cursor.character == ',') ppd.array_value_count++;
+							if(json_cursor.character == ',') ppd.def_count++;
 							if(json_cursor.character == '"') ppd.string_length += _json_seek_to_inclstr(&json_cursor, '"', 1);
 							_cursor_push(&json_cursor, 1);
 						}
