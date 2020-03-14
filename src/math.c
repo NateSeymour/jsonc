@@ -13,3 +13,16 @@ int nearest_power(int x, int pow)
 
 	return num;
 }
+
+int hash_map_mapper(char* string, int max)
+{
+	unsigned long hash = 5381;
+    int c;
+
+    while ((c = *string++))
+    {
+        hash = ((hash << 5) + hash) + c; 
+    }
+
+    return hash % max;
+}

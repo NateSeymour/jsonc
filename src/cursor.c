@@ -11,14 +11,6 @@ void _cursor_update(json_cursor_t* json_cursor)
 	} 
 	else {
 		json_cursor->end = 0;
-	}
-
-	json_cursor->character = json_cursor->json_string[json_cursor->position];
-
-	if(!json_cursor->end)
-	{
-		json_cursor->precursor = json_cursor->json_string[json_cursor->position - 1];
-		json_cursor->postcursor = json_cursor->json_string[json_cursor->position + 1];
 
 		if(json_cursor->json_string[json_cursor->position - 2] == '\\')
 		{
@@ -28,13 +20,11 @@ void _cursor_update(json_cursor_t* json_cursor)
 			json_cursor->precursor_escaped =  0;
 		}
 	}
-	else {
-		json_cursor->precursor = 0;
-		json_cursor->postcursor = 0;
-		json_cursor->precursor_escaped = 0;
-	}
 
-	if(json_cursor->precursor != '\\')
+	json_cursor->character = json_cursor->json_string[json_cursor->position];
+	json_cursor->postcursor = json_cursor->json_string[json_cursor->position + 1];
+
+	if(json_cursor->json_string[json_cursor->position - 1] != '\\')
 	{
 		json_cursor->escaped = 0;
 

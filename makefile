@@ -1,7 +1,7 @@
 debug: clean
 	mkdir build/jsonc
 
-	gcc -g -Wall -Wextra -pedantic -DDEBUG -DBENCHMARK -c src/*.c
+	gcc -g -Wall -Wextra -pedantic -DDEBUG -DBENCHMARK -DBENCHMARK_EX -c src/*.c
 
 	mv *.o build/jsonc
 
@@ -17,14 +17,14 @@ test: debug
 
 benchmark: clean
 	mkdir build/jsonc
-	gcc -DBENCHMARK -c src/*.c 
+	gcc -lpthread -DBENCHMARK -DBENCHMARK_EX -c src/*.c 
 	mv *.o build/jsonc
 	ar cr build/libjsonc-release.a build/jsonc/*.o
 
 	rm -rf test/jsonc
 	cp -r src/include test/jsonc
 
-	gcc -o build/benchmark test/*.c build/libjsonc-release.a
+	gcc -lpthread -o build/benchmark test/*.c build/libjsonc-release.a
 
 	cp test/*.json build
 

@@ -36,14 +36,16 @@ typedef struct {
 typedef struct {
 	int start_index;
 	int children_count;
+
+	int parent_object_index;
+
+	int children_offset;
 	json_def_t* children;
 } json_obj_t;
-
 typedef struct {
 	int obj_count;
 	int def_count;
 	int string_length;
-	int array_value_count;
 } preparse_data_t;
 
 typedef struct {
@@ -58,7 +60,7 @@ typedef struct {
 
 	json_obj_t* obj_pool;
 	json_def_t* def_pool;
-	int* def_index_hash_table;
+	json_def_t** def_index_hash_table;
 	char* string_pool;
 } json_document_t;
 
@@ -83,6 +85,7 @@ typedef struct {
 // Math
 int clamp(int x, int lower, int upper);
 int nearest_power(int x, int pow);
+int hash_map_mapper(char* string, int max);
 
 // Cursor
 void _cursor_push(json_cursor_t* json_cursor, int step);
@@ -92,7 +95,7 @@ void _cursor_init(json_cursor_t* json_cursor, const char* json_string);
 void _cursor_update(json_cursor_t* json_cursor);
 
 // Preparser
-preparse_data_t _json_preparse(const char* json_string);
+preparse_data_t _json_preparse(json_document_t* document, const char* json_string);
 
 // Lexer
 int _json_seek_to(json_cursor_t* json_cursor, char seek, int step);

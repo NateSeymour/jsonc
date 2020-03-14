@@ -1,8 +1,16 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include "include/jsonc.h"
+
+#define THREAD_COUNT 1
+
+typedef struct {
+	json_value_t value;
+	json_value_types type;
+} parse_value_data_t;
 
 typedef struct {
 	int obj_count;
@@ -11,11 +19,6 @@ typedef struct {
 	int strings;
 	int array_val_count;
 } parse_data_t;
-
-typedef struct {
-	json_value_t value;
-	json_value_types type;
-} parse_value_data_t;
 
 char* _parse_getstring(json_document_t* document, json_cursor_t* json_cursor)
 {
@@ -86,8 +89,11 @@ void _skip_object(json_cursor_t* json_cursor)
 	{
 		_cursor_push(json_cursor, 1);
 
-		if(json_cursor->character == '{' || json_cursor->character == '[') obj_count++;
-		if(json_cursor->character == '}' || json_cursor->character == ']') closing_count++;
+		if(!json_cursor->in_string)
+		{
+			if(json_cursor->character == '{' || json_cursor->character == '[') obj_count++;
+			if(json_cursor->character == '}' || json_cursor->character == ']') closing_count++;
+		}
 	}
 
 	_cursor_push(json_cursor, 1);
@@ -112,10 +118,11 @@ parse_value_data_t _parse_getvalue(json_document_t* document, json_cursor_t* jso
 		}
 		else if(json_cursor->postcursor == '{' || json_cursor->postcursor == '[')
 		{
-			pd->obj_count++;
-			value.value.obj_val = &document->obj_pool[pd->obj_count - 1];
-			((json_obj_t*)value.value.obj_val)->start_index = json_cursor->position + 1;
+			//pd->obj_count++;
+			//value.value.obj_val = &document->obj_pool[pd->obj_count - 1];
+			//((json_obj_t*)value.value.obj_val)->start_index = json_cursor->position + 1;
 			value.type = obj_t;
+			_cursor_push(json_cursor, 1);
 			_skip_object(json_cursor);
 			break;
 		}
@@ -123,12 +130,21 @@ parse_value_data_t _parse_getvalue(json_document_t* document, json_cursor_t* jso
 		{
 			value.value.bool_val = 1;
 			value.type = bool_t;
+			_cursor_push(json_cursor, 1);
 			break;
 		}
 		else if(json_cursor->postcursor == 'f')
 		{
 			value.value.bool_val = 0;
 			value.type = bool_t;
+			_cursor_push(json_cursor, 1);
+			break;
+		}
+		else if(json_cursor->postcursor == 'n')
+		{
+			value.value.bool_val = 0;
+			value.type = bool_t;
+			_cursor_push(json_cursor, 1);
 			break;
 		}
 		else if(json_cursor->postcursor == '}' 
@@ -169,7 +185,7 @@ void _json_print_def(json_def_t* def)
 
 		case bool_t:
 		{
-			DEBUG_PRINT("Key: \"%s\"\t bool value: %i\n", def->key, def->value.str_val);
+			DEBUG_PRINT("Key: \"%s\"\t bool value: %i\n", def->key, def->value.bool_val);
 			break;
 		}
 
@@ -183,7 +199,7 @@ void _json_print_def(json_def_t* def)
 #endif
 
 // Return 1 when done with object
-int _json_parse_definition(json_document_t* document, json_cursor_t* json_cursor, parse_data_t* pd, json_obj_t* obj)
+int _json_parse_definition(json_document_t* document, json_cursor_t* json_cursor, parse_data_t* pd, json_obj_t* obj, int* parsed_defs)
 {
 	// Get named definiton
 	char* definition_key = _parse_getstring(document, json_cursor);
@@ -200,13 +216,16 @@ int _json_parse_definition(json_document_t* document, json_cursor_t* json_cursor
 			.type = parse_value.type
 		};
 
+		obj->children[*parsed_defs] = test;
+		json_def_t* my_def = &obj->children[*parsed_defs];
+
+		*parsed_defs++;
 		pd->def_count++;
 
-		obj->children[obj->children_count] = test;
-		json_def_t* my_def = &obj->children[obj->children_count];
-
-		obj->children_count++;
-
+		// Put index in hashmap
+		//int index = hash_map_mapper(definition_key, document->hash_map_size);
+		//DEBUG_PRINT("Index: %i\n", index);
+		//document->def_index_hash_table[index] = my_def;
 	#ifdef DEBUG
 		_json_print_def(my_def);
 	#endif
@@ -215,14 +234,19 @@ int _json_parse_definition(json_document_t* document, json_cursor_t* json_cursor
 	// set up for the next definition
 	while(!json_cursor->end)
 	{
-		if(json_cursor->character == ',') return 0;
-		if(json_cursor->character == '}') return 1;
+		if(!json_cursor->in_string)
+		{
+			if(json_cursor->character == ',') return 0;
+			if(json_cursor->character == '}') return 1;
+		}
 		
 		_cursor_push(json_cursor, 1);
 	}
+
+	return 1;
 }
 
-int _json_parse_array_definition(json_document_t* document, json_cursor_t* json_cursor, parse_data_t* pd, json_obj_t* obj)
+int _json_parse_array_definition(json_document_t* document, json_cursor_t* json_cursor, parse_data_t* pd, json_obj_t* obj, int* parsed_defs)
 {
 	parse_value_data_t parse_value = _parse_getvalue(document, json_cursor, pd);
 
@@ -234,16 +258,26 @@ int _json_parse_array_definition(json_document_t* document, json_cursor_t* json_
 			.type = parse_value.type
 		};
 
+		obj->children[*parsed_defs] = test;
+		json_def_t* my_def = &obj->children[*parsed_defs];
+
+		*parsed_defs++;
 		pd->def_count++;
-
-		obj->children[obj->children_count] = test;
-		json_def_t* my_def = &obj->children[obj->children_count];
-
-		obj->children_count++;
-
 	#ifdef DEBUG
 		_json_print_def(my_def);
 	#endif
+
+		// set up for the next definition
+		while(!json_cursor->end)
+		{
+			if(!json_cursor->in_string)
+			{
+				if(json_cursor->character == ',') return 0;
+				if(json_cursor->character == ']') return 1;
+			}
+			
+			_cursor_push(json_cursor, 1);
+		}
 
 		return 0;
 	}
@@ -256,10 +290,11 @@ void _json_parse_object(json_document_t* document, json_cursor_t* json_cursor, p
 	DEBUG_PRINT("\nObject number %i\n", obj_index);
 	json_obj_t* current_obj = &document->obj_pool[obj_index];
 
-	current_obj->children_count = 0;
-	current_obj->children = &document->def_pool[pd->def_count];
+	current_obj->children = document->def_pool + current_obj->children_offset;
 
 	_cursor_move_unsafe(json_cursor, current_obj->start_index);
+
+	int obj_parsed_defs = 0;
 
 	// Get first character
 	if(json_cursor->character != '{' && json_cursor->character != '[')
@@ -271,44 +306,85 @@ void _json_parse_object(json_document_t* document, json_cursor_t* json_cursor, p
 	{
 		while(1)
 		{
-			if(_json_parse_definition(document, json_cursor, pd, current_obj) == 1) break;
+			if(_json_parse_definition(document, json_cursor, pd, current_obj, &obj_parsed_defs) == 1) break;
 		}
 	}
 	else if(json_cursor->character == '[')
 	{
 		while(1)
 		{
-			if(_json_parse_array_definition(document, json_cursor, pd, current_obj) == 1) break;
+			if(_json_parse_array_definition(document, json_cursor, pd, current_obj, &obj_parsed_defs) == 1) break;
 		}
 	}
 	
 }
 
-void _json_do_parse(json_document_t* document, preparse_data_t ppd, const char* json_string)
+typedef struct {
+	json_document_t* document;
+	const char* json_string;
+	
+	preparse_data_t ppd;
+
+	int step;
+	int start_index;
+} parse_thread_args_t;
+
+void* _json_parse_thread(void* argsraw)
 {
+	parse_thread_args_t* args = (parse_thread_args_t*)argsraw;
+
 	// Create parsing cursor
 	json_cursor_t json_cursor;
-	_cursor_init(&json_cursor, json_string);
+	_cursor_init(&json_cursor, args->json_string);
 
 	// Create parse data obj
 	parse_data_t pd = {
-		.obj_count = 1,
+		.obj_count = 0,
 		.def_count = 0,
-		.current_obj_index = 0, 
-		.strings = 0,
-		.array_val_count = 0
+		.current_obj_index = 0
 	};
 
-	// Prep root object
-	document->obj_pool[0].start_index = 0;
-
-	DEBUG_PRINT("\nParsing results: \n");
-
 	// Parse Loop
-	for(int i = 0; i < ppd.obj_count; i++)
+	for(int i = args->start_index; i < args->ppd.obj_count; i += args->step)
 	{
-		_json_parse_object(document, &json_cursor, &pd, i);
+		_json_parse_object(args->document, &json_cursor, &pd, i);
 	}
+
+	return 0;
+}
+
+void _json_do_parse(json_document_t* document, preparse_data_t ppd, const char* json_string)
+{
+	DEBUG_PRINT("\nParsing results: \n");
+/*
+	parse_thread_args_t thread_args[THREAD_COUNT];
+	pthread_t threads[THREAD_COUNT];
+
+	for(int i = 0; i < THREAD_COUNT; i++)
+	{
+		thread_args[i].document = document;
+		thread_args[i].json_string = json_string;
+		thread_args[i].ppd = ppd;
+		thread_args[i].step = THREAD_COUNT + 1;
+		thread_args[i].start_index = i;
+
+		pthread_create(&threads[i], 0, _json_parse_thread, (void*)&thread_args[i]);
+	}*/
+
+	parse_thread_args_t args = {
+		.document = document,
+		.json_string = json_string,
+		.ppd = ppd,
+		.step = THREAD_COUNT + 1,
+		.start_index = THREAD_COUNT
+	};
+
+	_json_parse_thread(&args);
+
+	/*for(int i = 0; i < THREAD_COUNT; i++)
+	{
+		pthread_join(threads[i], NULL);
+	}*/
 }
 
 

@@ -17,5 +17,7 @@
 
 	"more_tests": {
 		"lol": "string"
-	}
+	},
+
+	"bye": "bye bye"
 }
